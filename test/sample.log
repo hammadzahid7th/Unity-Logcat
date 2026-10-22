@@ -1,0 +1,26 @@
+--------- beginning of main
+2026-10-22 10:00:00.000  1000  1000 I ActivityManager: Start proc 4321:com.studio.game/u0a123 for top-activity
+2026-10-22 10:00:01.500  1000  1010 I ActivityTaskManager: Displayed com.studio.game/com.unity3d.player.UnityPlayerActivity: +1s480ms
+2026-10-22 10:00:03.000  4321  4350 I Unity   : [PM] LEVEL_START 1
+2026-10-22 10:00:10.000  4321  4350 W Unity   : Texture slow load
+2026-10-22 10:00:20.000  4321  4350 I Unity   : LEVEL_COMPLETE 1
+2026-10-22 10:00:22.000  4321  4350 I Unity   : Level 2 started
+2026-10-22 10:00:30.000  4321  4350 E Unity   : NullReferenceException: Object reference not set to an instance of an object
+2026-10-22 10:00:30.000  4321  4350 E Unity   :   at Game.Enemy.Update () [0x00000] in <abc>:0
+2026-10-22 10:00:30.000  4321  4350 E Unity   : UnityEngine.Debug:LogException(Exception)
+2026-10-22 10:00:30.000  4321  4350 E Unity   : Game.Enemy:Update() (at Assets/Scripts/Enemy.cs:42)
+2026-10-22 10:00:35.000  4321  4350 I Unity   : LEVEL_FAIL 2
+2026-10-22 10:00:36.000  4321  4350 I Unity   : [PM] LEVEL_START 2
+2026-10-22 10:00:40.000  1000  1011 E ActivityManager: ANR in com.studio.game (com.studio.game/com.unity3d.player.UnityPlayerActivity)
+2026-10-22 10:00:40.000  1000  1011 E ActivityManager: PID: 4321
+2026-10-22 10:00:40.000  1000  1011 E ActivityManager: Reason: Input dispatching timed out (waiting to send key event)
+2026-10-22 10:00:50.000  4321  4350 I Unity   : [PM] LEVEL_COMPLETE 2
+2026-10-22 10:00:51.000  4321  4350 I Unity   : [PM] LEVEL_START 3
+2026-10-22 10:01:00.000  9000  9000 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+2026-10-22 10:01:00.000  9000  9000 F DEBUG   : pid: 4321, tid: 4350, name: UnityMain  >>> com.studio.game <<<
+2026-10-22 10:01:00.000  9000  9000 F DEBUG   : signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0
+2026-10-22 10:01:00.000  9000  9000 F DEBUG   :       #00 pc 0000000000a1b2c3  /data/app/com.studio.game/lib/arm64/libil2cpp.so (Foo_Bar+12)
+2026-10-22 10:01:00.500  1000  1011 I ActivityManager: Process com.studio.game (pid 4321) has died: fg TOP
+2026-10-22 10:01:05.000  1000  1011 I ActivityManager: Start proc 4400:com.studio.game/u0a123 for top-activity
+2026-10-22 10:01:08.000  4400  4420 I Unity   : [PM] LEVEL_START 3
+2026-10-22 10:01:30.000  4400  4420 I Unity   : [PM] LEVEL_COMPLETE 3

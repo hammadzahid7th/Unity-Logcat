@@ -1,0 +1,9 @@
+sessions/
+uploads/
+tools/
+node_modules/
+rules.json
+dist/
+.claude/
+.DS_Store
+*.zip

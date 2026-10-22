@@ -1,0 +1,11 @@
+{
+  "name": "unity-logcat-pm",
+  "version": "1.0.0",
+  "description": "Standalone Unity/Android test companion: install a build, stream logcat, track crashes, ANRs and level timings, export a build report.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/analyzer.test.js"
+  },
+  "license": "MIT"
+}

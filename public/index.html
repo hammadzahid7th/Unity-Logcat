@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unity Logcat PM</title>
+<style>
+:root{color-scheme:light dark;--bg:#f3f4f6;--panel:#ffffff;--panel2:#fafafb;--line:#d8dbe0;--fg:#1d1f23;--mut:#666c75;--acc:#0b63ce;--accfg:#fff;--ok:#1d7a3e;--warn:#946200;--bad:#c4262e;--sel:#e7f0fc;--hover:#f0f2f5;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#1c1d20;--panel:#26282c;--panel2:#222428;--line:#3a3d43;--fg:#dcdee2;--mut:#9399a2;--acc:#5b9df0;--accfg:#08203f;--ok:#62b97d;--warn:#d6a23f;--bad:#ef7770;--sel:#2b3a50;--hover:#2d3035}}
+:root[data-theme=dark]{--bg:#1c1d20;--panel:#26282c;--panel2:#222428;--line:#3a3d43;--fg:#dcdee2;--mut:#9399a2;--acc:#5b9df0;--accfg:#08203f;--ok:#62b97d;--warn:#d6a23f;--bad:#ef7770;--sel:#2b3a50;--hover:#2d3035}
+:root[data-theme=light]{color-scheme:light}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:20px;padding:0 14px;height:38px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:13px;margin:0;font-weight:600}header .sp{flex:1}
+.tabs{display:flex;height:100%}.tab{background:none;border:0;border-bottom:2px solid transparent;color:var(--mut);padding:0 12px;cursor:pointer;font:inherit;border-radius:0}
+.tab:hover{color:var(--fg)}.tab.on{color:var(--fg);border-bottom-color:var(--acc)}
+.pill{font-size:12px;color:var(--mut)}.pill.ok{color:var(--ok)}.pill.bad{color:var(--bad)}
+.pill::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:0}
+main{flex:1;display:flex;min-height:0}
+aside{width:320px;border-right:1px solid var(--line);background:var(--panel);overflow:auto;flex:none}
+section.box{padding:12px 14px;border-bottom:1px solid var(--line)}
+section.box h3{margin:0 0 8px;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+button,select,input,textarea{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 9px}
+input:focus,select:focus,textarea:focus{outline:2px solid color-mix(in srgb,var(--acc) 45%,transparent);outline-offset:-1px;border-color:var(--acc)}
+button{cursor:pointer}button:hover:not(:disabled){background:var(--hover)}
+button.primary{background:var(--acc);border-color:var(--acc);color:var(--accfg);font-weight:500}button.primary:hover:not(:disabled){filter:brightness(1.08);background:var(--acc)}
+button.danger{color:var(--bad);border-color:var(--bad)}button.danger:hover:not(:disabled){background:color-mix(in srgb,var(--bad) 12%,transparent)}
+button:disabled{opacity:.4;cursor:default}
+input[type=text],select,textarea{width:100%}input[type=checkbox]{accent-color:var(--acc)}
+textarea{font:11px var(--mono);resize:vertical}
+.row{display:flex;gap:6px;align-items:center;margin:6px 0}.row>*{min-width:0}.row .grow{flex:1}
+.muted{color:var(--mut)}.small{font-size:12px}
+.dev{display:flex;gap:8px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:4px;margin:4px 0;cursor:pointer;background:var(--panel2)}
+.dev.sel{border-color:var(--acc);background:var(--sel)}.dev .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dev .pill::before{display:none}
+.drop{border:1px dashed var(--line);border-radius:4px;padding:14px;text-align:center;color:var(--mut);cursor:pointer;background:var(--panel2)}
+.drop:hover,.drop.over{border-color:var(--acc);color:var(--fg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px}.kv div:nth-child(odd){color:var(--mut)}
+.view{flex:1;display:none;flex-direction:column;min-width:0}.view.on{display:flex}
+.stats{display:flex;gap:0;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.stat{padding:7px 16px;border-right:1px solid var(--line);min-width:90px}
+.stat span{display:block;font-size:11px;color:var(--mut)}.stat b{display:block;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.stat.bad b{color:var(--bad)}.stat.warn b{color:var(--warn)}
+.stat:not(.bad):not(.warn) b{color:var(--fg)}
+#sCrash:not(.bad) b,#sAnr:not(.bad) b,#sKill:not(.bad) b{color:var(--fg)}
+.filters{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap;background:var(--panel)}
+.lv{display:flex}.lv label{padding:3px 9px;border:1px solid var(--line);margin-left:-1px;cursor:pointer;font:600 11px var(--mono);user-select:none;color:var(--mut)}
+.lv label:first-child{border-radius:4px 0 0 4px;margin-left:0}.lv label:last-child{border-radius:0 4px 4px 0}
+.lv input{display:none}.lv label:has(input:checked){background:var(--sel);color:var(--fg);border-color:var(--acc);position:relative}
+#log{flex:1;overflow:auto;font:12px/1.55 var(--mono);padding:2px 0;min-height:0;background:var(--panel)}
+.r{padding:0 12px 0 9px;white-space:pre-wrap;word-break:break-word;border-left:3px solid transparent}
+.r:hover{background:var(--hover)}.r .t{color:var(--mut);margin-right:10px}.r .g{color:var(--acc);margin-right:10px}
+.r.LV,.r.LD{color:var(--mut)}.r.LW{color:var(--warn);border-left-color:var(--warn)}.r.LE,.r.LF{color:var(--bad);border-left-color:var(--bad)}
+.r.x{opacity:.6}
+.r.has{cursor:pointer}.r .st{color:var(--acc);margin-left:8px;font-size:11px}
+.r .stack{display:block;color:var(--mut);padding:2px 0 4px 18px;margin:2px 0 4px 4px;border-left:1px solid var(--line)}
+.r.inc{background:color-mix(in srgb,var(--bad) 11%,transparent);border-left-color:var(--bad);color:var(--bad);font-weight:600;margin:3px 0;padding-top:3px;padding-bottom:3px}
+.r.inc.anr{background:color-mix(in srgb,var(--warn) 13%,transparent);border-left-color:var(--warn);color:var(--warn)}
+.r.lvl{background:var(--panel2);border-left-color:var(--ok);color:var(--ok);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:2px 0}
+.r.lvl.fail{border-left-color:var(--warn);color:var(--warn)}
+.empty{color:var(--mut);padding:48px;text-align:center;font:13px/1.6 -apple-system,sans-serif}
+iframe{flex:1;border:0;background:#fff;min-height:0}
+.hist{padding:16px;overflow:auto}.hist table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line)}
+.hist th{font-weight:600;color:var(--mut);background:var(--panel2)}.hist td,.hist th{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}
+.toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px;z-index:10}
+.toast div{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);padding:8px 12px;border-radius:4px;max-width:420px;box-shadow:0 2px 10px #0003}
+.toast .bad{border-left-color:var(--bad)}.toast .ok{border-left-color:var(--ok)}.toast .warn{border-left-color:var(--warn)}
+.banner{background:color-mix(in srgb,var(--warn) 14%,transparent);border-bottom:1px solid var(--warn);padding:10px 14px}
+a{color:var(--acc)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Unity Logcat PM</h1>
+  <div class="tabs">
+    <button class="tab on" data-tab="live">Live</button>
+    <button class="tab" data-tab="report">Report</button>
+    <button class="tab" data-tab="history">History</button>
+  </div>
+  <span class="sp"></span>
+  <a href="/guide.html" target="_blank" class="small" style="text-decoration:none">Guide</a>
+  <select id="theme" style="width:auto" title="Theme"><option value="auto">Theme: Auto</option><option value="light">Light</option><option value="dark">Dark</option></select>
+  <span id="devState" class="pill">No session</span>
+  <span id="adbState" class="pill">adb ?</span>
+</header>
+<main>
+<aside>
+  <div id="adbBanner" class="banner" style="display:none">
+    <b>adb not found.</b> It is the tool that talks to the phone. <div class="row"><button class="primary" id="btnSetupAdb">Download adb (Google, ~10 MB)</button></div>
+    <div class="small" id="setupMsg"></div>
+  </div>
+
+  <section class="box">
+    <h3>Phone <button id="btnRefresh" class="small">Refresh</button></h3>
+    <div id="devices"><div class="muted">No device. Plug in via USB (USB debugging on) or connect over Wi-Fi below.</div></div>
+    <div class="row"><input type="text" id="addr" placeholder="Wi-Fi: 192.168.1.20:5555"><button id="btnConnect">Connect</button></div>
+    <div class="row"><button id="btnWireless" class="grow" disabled title="Plug in USB once, click this, then unplug">Switch USB phone to Wi-Fi</button></div>
+    <div class="row"><button id="btnQr" class="grow">Pair with QR code</button></div>
+    <div id="qrBox" style="display:none;text-align:center">
+      <div id="qrImg" style="background:#fff;display:inline-block;padding:8px;border-radius:8px"></div>
+      <div class="small muted" id="qrMsg">Phone: Developer options → Wireless debugging → Pair device with <b>QR code</b> → scan this.</div>
+    </div>
+    <details class="small"><summary class="muted">Pair with code instead</summary>
+      <div class="row"><input type="text" id="pairAddr" placeholder="Pair IP:port (from phone)"></div>
+      <div class="row"><input type="text" id="pairCode" placeholder="6-digit code"><button id="btnPair">Pair</button></div>
+      <div class="muted">Phone: Developer options → Wireless debugging → Pair device with pairing code. Then use the main IP:port shown there in Connect.</div>
+    </details>
+  </section>
+
+  <section class="box">
+    <h3>Build</h3>
+    <div class="drop" id="drop">Drop <b>.apk</b> here<br><span class="small">or click to choose</span><input type="file" id="file" accept=".apk" hidden></div>
+    <div id="apkInfo" class="kv" style="margin-top:8px"></div>
+    <label class="row small"><input type="checkbox" id="clean"> Clean install (uninstall old build first)</label>
+    <div class="row"><button class="primary grow" id="btnInstall" disabled>Install on phone</button></div>
+    <div class="muted small" style="margin-top:6px">…or test an app already on the phone:</div>
+    <div class="row"><input type="text" id="pkgSel" class="grow" list="pkgList" placeholder="Pick or type bundle id (com.company.game)" autocomplete="off"><datalist id="pkgList"></datalist><button id="btnPkgs" class="small">Reload</button></div>
+    <label class="row small"><input type="checkbox" id="sysApps"> Include system apps (Chrome, YouTube, ...)</label>
+  </section>
+
+  <section class="box">
+    <h3>Test session</h3>
+    <label class="row small"><input type="checkbox" id="optClear" checked> Clear old logs first</label>
+    <label class="row small"><input type="checkbox" id="optLaunch" checked> (Re)launch the app</label>
+    <div class="row"><button class="primary grow" id="btnStart" disabled>Start session</button><button class="danger" id="btnStop" disabled>Stop</button></div>
+    <div class="muted small">Stop saves the session to History and builds the report.</div>
+  </section>
+
+  <section class="box">
+    <h3>Level log patterns</h3>
+    <div class="muted small">Firebase Analytics event (works in release builds):</div>
+    <div class="row"><input type="text" id="fbEvent" value="Steps" title="Event name"><input type="text" id="fbStart" value="Started" title="Start parameter"><input type="text" id="fbEnd" value="Ended" title="End parameter"></div>
+    <div class="row small muted"><span class="grow">event name / start param / end param</span></div>
+    <div class="row"><button id="btnFb" class="grow">Use this Firebase event</button></div>
+    <div class="muted small" style="margin-top:8px">Or plain log patterns (case-insensitive regex, first group = level id):</div>
+    <div class="small muted">Start</div><textarea id="rStart" rows="2"></textarea>
+    <div class="small muted">Complete</div><textarea id="rEnd" rows="2"></textarea>
+    <div class="small muted">Fail</div><textarea id="rFail" rows="2"></textarea>
+    <div class="small muted">Custom event</div><textarea id="rEvent" rows="1"></textarea>
+    <div class="row"><button id="btnRules" class="grow">Save &amp; re-analyze</button><button id="btnRulesReset">Defaults</button></div>
+    <div class="small"><a href="/unity/PMLog.cs" style="color:var(--acc)">Get PMLog.cs for developers</a></div>
+  </section>
+</aside>
+
+<div class="view on" id="v-live">
+  <div class="stats" id="stats">
+    <div class="stat" id="sCrash"><b>0</b><span>Crashes</span></div>
+    <div class="stat" id="sAnr"><b>0</b><span>ANRs</span></div>
+    <div class="stat" id="sKill"><b>0</b><span>Kills</span></div>
+    <div class="stat warn" id="sErr"><b>0</b><span>Errors</span></div>
+    <div class="stat" id="sLevel"><b>-</b><span>Level now</span></div>
+    <div class="stat" id="sStart"><b>-</b><span>Cold start</span></div>
+    <div class="stat" id="sMem"><b>-</b><span>Memory</span></div>
+    <div class="stat" id="sTime"><b>0:00</b><span>Elapsed</span></div>
+  </div>
+  <div class="filters">
+    <div class="lv" id="lv">
+      <label style="color:#9aa6b6"><input type="checkbox" value="V" checked><span>V</span></label>
+      <label style="color:#8bb4e8"><input type="checkbox" value="D" checked><span>D</span></label>
+      <label style="color:#d8dee8"><input type="checkbox" value="I" checked><span>I</span></label>
+      <label style="color:var(--warn)"><input type="checkbox" value="W" checked><span>W</span></label>
+      <label style="color:var(--bad)"><input type="checkbox" value="E" checked><span>E</span></label>
+    </div>
+    <input type="text" id="q" placeholder="Search…  (use !word to exclude)" style="width:260px">
+    <select id="tagSel" style="width:150px"><option value="">All tags</option></select>
+    <select id="scope" style="width:120px" title="App = only your game. All = whole phone log"><option value="app">App only</option><option value="all">Whole phone</option></select>
+    <label class="small"><input type="checkbox" id="onlyUnity"> Unity only</label>
+    <label class="small"><input type="checkbox" id="auto" checked> Auto-scroll</label>
+    <button id="btnClearView">Clear view</button>
+    <button id="btnCopy">Copy</button>
+    <span class="muted small" id="count"></span>
+  </div>
+  <div id="log"><div class="empty">Connect a phone, install a build and press <b>Start session</b>.<br>Logs, crashes, ANRs and level times will appear here.</div></div>
+</div>
+
+<div class="view" id="v-report">
+  <div class="filters">
+    <button id="btnRepRefresh">Refresh</button>
+    <a id="repDownload" href="#"><button>Download HTML</button></a>
+    <button id="btnRepCopy">Copy short summary (Slack)</button>
+    <a id="repOpen" href="#" target="_blank"><button>Open in tab</button></a>
+    <span class="muted small">Report updates live; send the downloaded file to the developer.</span>
+  </div>
+  <iframe id="repFrame"></iframe>
+</div>
+
+<div class="view" id="v-history"><div class="hist" id="histBody"></div></div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const api = async (p, body) => {
+  const r = await fetch('/api/' + p, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+};
+function toast(msg, cls = '', ms = 6000) {
+  const d = document.createElement('div'); d.className = cls; d.textContent = msg;
+  $('#toast').appendChild(d); setTimeout(() => d.remove(), ms);
+}
+
+// ---------- state ----------
+let devices = [], selSerial = null, apk = null, session = null, defaultRules = {}, curRules = null, apkInstalled = false, adbOk = true;
+let rows = [], view = [], byId = new Map(), expanded = new Set(), dirty = false;
+const tags = new Map();
+const MAXROWS = 120000, SHOW = 1500;
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + b.dataset.tab));
+  if (b.dataset.tab === 'report') loadReport();
+  if (b.dataset.tab === 'history') loadHistory();
+});
+
+// ---------- devices ----------
+async function refreshStatus() {
+  const s = await api('status');
+  $('#adbState').textContent = s.adb ? 'adb ' + (s.adb.version || 'ok') : 'adb missing';
+  $('#adbState').className = 'pill ' + (s.adb ? 'ok' : 'bad');
+  $('#adbBanner').style.display = s.adb ? 'none' : 'block';
+  devices = s.devices;
+  defaultRules = s.defaultRules; curRules = s.rules; adbOk = !!s.adb;
+  if (!document.activeElement.matches('#rules textarea,.box textarea')) fillRules(s.rules);
+  if (!selSerial || !devices.find((d) => d.serial === selSerial)) selSerial = (devices.find((d) => d.state === 'device') || {}).serial || null;
+  renderDevices();
+  syncButtons();
+  session = s.session;
+  paintSessionState();
+}
+function renderDevices() {
+  const el = $('#devices');
+  if (!devices.length) { el.innerHTML = '<div class="muted">No device. Plug in via USB (USB debugging on) or connect over Wi-Fi below.</div>'; return; }
+  el.innerHTML = devices.map((d) => `<div class="dev ${d.serial === selSerial ? 'sel' : ''}" data-s="${esc(d.serial)}">
+    <div class="n"><b>${esc(d.model || d.serial)}</b><div class="small muted">${esc(d.serial)}</div></div>
+    <span class="pill ${d.state === 'device' ? 'ok' : 'bad'}">${d.state === 'device' ? (d.wifi ? 'Wi-Fi' : 'USB') : esc(d.state)}</span></div>`).join('');
+  el.querySelectorAll('.dev').forEach((n) => n.onclick = () => { selSerial = n.dataset.s; renderDevices(); syncButtons(); loadPackages(); });
+}
+function syncButtons() {
+  const d = devices.find((x) => x.serial === selSerial);
+  const ok = d && d.state === 'device';
+  $('#btnWireless').disabled = !ok || d.wifi;
+  $('#btnInstall').disabled = !(ok && apk);
+  const live = session && session.live;
+  $('#btnStart').disabled = !(ok && ((apk && apk.package) || $('#pkgSel').value)) || live;
+  $('#btnStop').disabled = !live;
+}
+$('#btnRefresh').onclick = refreshStatus;
+$('#btnConnect').onclick = async () => {
+  const addr = $('#addr').value.trim(); if (!addr) return;
+  const r = await api('connect', { addr: addr.includes(':') ? addr : addr + ':5555' });
+  toast(r.msg, r.ok ? 'ok' : 'bad'); refreshStatus();
+};
+$('#btnPair').onclick = async () => {
+  const r = await api('pair', { addr: $('#pairAddr').value.trim(), code: $('#pairCode').value.trim() });
+  toast(r.msg, r.ok ? 'ok' : 'bad');
+};
+$('#btnWireless').onclick = async () => {
+  $('#btnWireless').disabled = true;
+  const r = await api('go-wireless', { serial: selSerial });
+  toast(r.msg, r.ok ? 'ok' : 'bad', 9000); refreshStatus();
+};
+let qrTimer = null;
+$('#btnQr').onclick = async () => {
+  if (typeof QRCode === 'undefined') return toast('QR library could not load (needs internet). Use the pairing-code option.', 'bad');
+  const r = await api('qr/start', {});
+  $('#qrBox').style.display = 'block'; $('#qrImg').innerHTML = '';
+  new QRCode($('#qrImg'), { text: r.payload, width: 190, height: 190 });
+  clearInterval(qrTimer);
+  qrTimer = setInterval(async () => {
+    const s = await api('qr/status');
+    const m = { waiting: 'Waiting for the phone to scan…', pairing: 'Pairing…', paired: 'Paired - connecting…' }[s.state];
+    if (m) $('#qrMsg').textContent = m + (s.msg ? ' (' + s.msg + ')' : '');
+    if (s.state === 'connected') { clearInterval(qrTimer); $('#qrBox').style.display = 'none'; toast('Phone connected over Wi-Fi', 'ok'); refreshStatus(); }
+    if (s.state === 'timeout') { clearInterval(qrTimer); $('#qrMsg').textContent = 'Timed out. Click the QR button to try again, or use the pairing code.'; }
+  }, 1500);
+};
+$('#btnSetupAdb').onclick = async () => {
+  $('#setupMsg').textContent = 'Downloading…'; const r = await api('setup-adb', {});
+  $('#setupMsg').textContent = r.msg; refreshStatus();
+};
+
+// ---------- build ----------
+const drop = $('#drop');
+drop.onclick = () => $('#file').click();
+$('#file').onchange = (e) => e.target.files[0] && upload(e.target.files[0]);
+drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = (e) => { e.preventDefault(); drop.classList.remove('over'); e.dataTransfer.files[0] && upload(e.dataTransfer.files[0]); };
+async function upload(f) {
+  drop.innerHTML = `Reading ${esc(f.name)} (${(f.size / 1048576).toFixed(0)} MB)…`;
+  const r = await (await fetch('/api/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f })).json();
+  drop.innerHTML = 'Drop <b>.apk</b> here<br><span class="small">or click to choose</span>';
+  if (!r.ok) return toast(r.msg, 'bad');
+  apk = r.apk; apkInstalled = false; $('#pkgSel').value = '';
+  const rows = apk.parseError ? [['Package', 'unknown (will detect after install)'], ['Size', (apk.size / 1048576).toFixed(1) + ' MB']] : [['Package', apk.package], ['Version', `${apk.versionName} (${apk.versionCode})`], ['Size', (apk.size / 1048576).toFixed(1) + ' MB'],
+    ['Backend', apk.backend || '-'], ['ABIs', (apk.abis || []).join(', ') || '-'], ['Debuggable', apk.debuggable ? 'yes (dev build)' : 'no']];
+  $('#apkInfo').innerHTML = rows.map(([k, v]) => `<div>${k}</div><div>${esc(v)}</div>`).join('');
+  syncButtons();
+}
+$('#btnInstall').onclick = async () => {
+  $('#btnInstall').disabled = true; $('#btnInstall').textContent = 'Installing…';
+  const before = new Set((await api('packages?serial=' + encodeURIComponent(selSerial))).packages.map((p) => p.name));
+  const r = await api('install', { serial: selSerial, path: apk.file, clean: $('#clean').checked, pkg: apk.package });
+  $('#btnInstall').textContent = 'Install on phone';
+  if (r.ok) apkInstalled = true;
+  if (r.ok && !apk.package) {
+    const after = (await api('packages?serial=' + encodeURIComponent(selSerial))).packages.map((p) => p.name);
+    const fresh = after.filter((p) => !before.has(p));
+    if (fresh.length === 1) apk.package = fresh[0];
+    else toast('Installed, but could not tell which app it is - pick it from the installed-apps list.', 'warn', 10000);
+  }
+  toast(r.ok ? 'Installed ' + (apk.package || '') : (r.hint || r.msg), r.ok ? 'ok' : 'bad', 10000);
+  syncButtons(); loadPackages();
+};
+async function loadPackages() {
+  if (!selSerial) return;
+  const r = await api('packages?serial=' + encodeURIComponent(selSerial) + ($('#sysApps').checked ? '&all=1' : ''));
+  $('#pkgList').innerHTML = (r.packages || []).map((p) => `<option value="${esc(p.name)}" label="${esc(p.updated)}">`).join('');
+}
+$('#btnPkgs').onclick = loadPackages;
+$('#sysApps').onchange = loadPackages;
+$('#pkgSel').oninput = () => { dirty = true; if ($('#pkgSel').value.trim()) { apk = null; $('#btnInstall').disabled = true; $('#apkInfo').innerHTML = ''; } syncButtons(); };
+
+// ---------- session ----------
+$('#btnStart').onclick = async () => {
+  const pkg = (apk && apk.package) || $('#pkgSel').value.trim();
+  let build = apk ? { ...apk } : { name: 'installed app' };
+  if (!apk) { const pi = await api(`package-info?serial=${encodeURIComponent(selSerial)}&pkg=${encodeURIComponent(pkg)}`); build = { ...build, versionName: pi.versionName, versionCode: pi.versionCode }; }
+  delete build.file;
+  clearView();
+  const r = await api('session/start', { serial: selSerial, pkg, build, clear: $('#optClear').checked, launch: $('#optLaunch').checked });
+  if (r.ok) toast('Session started', 'ok'); refreshStatus();
+};
+$('#btnStop').onclick = async () => { await api('session/stop', {}); toast('Session saved to History', 'ok'); refreshStatus(); };
+function paintSessionState() {
+  const live = session && session.live;
+  $('#devState').textContent = !session ? 'No session' : live ? 'Recording: ' + session.pkg : 'Stopped: ' + session.pkg;
+  $('#devState').className = 'pill ' + (live ? 'ok' : '');
+}
+let lastStats = null;
+function paintStats(s) {
+  lastStats = s; const c = s.counts;
+  const set = (id, v, bad) => { const e = $(id); e.querySelector('b').textContent = v; if (bad !== undefined) e.classList.toggle('bad', bad); };
+  set('#sCrash', c.crashes, c.crashes > 0); set('#sAnr', c.anrs, c.anrs > 0); set('#sKill', c.killed, c.killed > 0);
+  $('#sErr b').textContent = c.errors;
+  $('#sLevel b').textContent = s.currentLevel ?? '-';
+  $('#sStart b').textContent = s.startupMs != null ? (s.startupMs / 1000).toFixed(1) + 's' : '-';
+  $('#sMem b').textContent = s.memoryKb ? Math.round(s.memoryKb / 1024) + ' MB' : '-';
+  const sec = Math.floor(s.elapsed / 1000); $('#sTime b').textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+}
+
+// ---------- rules ----------
+function fillRules(r) { $('#rStart').value = r.start; $('#rEnd').value = r.end; $('#rFail').value = r.fail; $('#rEvent').value = r.event; }
+$('#btnRules').onclick = async () => {
+  const r = await api('rules', { rules: { start: $('#rStart').value, end: $('#rEnd').value, fail: $('#rFail').value, event: $('#rEvent').value } });
+  toast('Patterns saved' + (session ? ' and session re-analyzed' : ''), 'ok');
+};
+$('#btnFb').onclick = async () => {
+  const re = (x) => x.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const ev = re($('#fbEvent').value), st = re($('#fbStart').value), en = re($('#fbEnd').value);
+  if (!ev || !st || !en) return toast('Fill event name, start param and end param', 'bad');
+  // 1) Firebase's own "Logging event ... name=Steps,params=Bundle[{Started=3}]"
+  // 2) the game's own Unity log: "Steps | STARTED: Level 3" / "Steps | STARTED already sent previously for Level 3"
+  const mk = (p) => `name=${ev},.*?[{, ]${p}=([^,}\\s]+)|${ev}\\s*\\|\\s*${p}(?:\\s*:|\\s+already sent previously for)\\s*(?:level\\s*)?(\\w+)`;
+  fillRules({ start: mk(st), end: mk(en), fail: '(?!)', event: defaultRules.event });
+  $('#btnRules').click();
+};
+$('#btnRulesReset').onclick = () => { fillRules(defaultRules); };
+
+// ---------- log view ----------
+const fmtT = (t) => new Date(t).toISOString().slice(11, 23);
+function clearView() { rows = []; view = []; byId.clear(); expanded.clear(); tags.clear(); $('#tagSel').innerHTML = '<option value="">All tags</option>'; dirty = true; }
+function addRow(r) {
+  rows.push(r); byId.set(r.id, r);
+  if (rows.length > MAXROWS + 5000) { for (const o of rows.splice(0, 5000)) byId.delete(o.id); view = view.filter((x) => byId.has(x.id)); }
+  if (r.tag && !r.kind && !tags.has(r.tag)) { tags.set(r.tag, 1); const o = document.createElement('option'); o.textContent = r.tag; $('#tagSel').appendChild(o); }
+  if (pass(r)) { view.push(r); dirty = true; }
+}
+function filt() {
+  const q = $('#q').value.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(Boolean);
+  return {
+    lv: new Set([...document.querySelectorAll('#lv input:checked')].map((i) => i.value)),
+    inc: terms.filter((t) => !t.startsWith('!')), exc: terms.filter((t) => t.startsWith('!') && t.length > 1).map((t) => t.slice(1)),
+    tag: $('#tagSel').value, unity: $('#onlyUnity').checked,
+  };
+}
+let F = filt();
+function pass(r) {
+  if (r.kind) return true;
+  if (r.x && $('#scope').value !== 'all') return false;
+  const l = r.lvl === 'F' ? 'E' : r.lvl; if (!F.lv.has(l)) return false;
+  if (F.tag && r.tag !== F.tag) return false;
+  if (F.unity && r.tag !== 'Unity') return false;
+  if (F.inc.length || F.exc.length) {
+    const h = (r.tag + ' ' + r.msg + ' ' + (r.stack || []).join(' ')).toLowerCase();
+    if (F.inc.some((t) => !h.includes(t)) || F.exc.some((t) => h.includes(t))) return false;
+  }
+  return true;
+}
+function refilter() { F = filt(); view = rows.filter(pass); dirty = true; }
+['#q', '#tagSel', '#onlyUnity'].forEach((s) => $(s).addEventListener('input', refilter));
+document.querySelectorAll('#lv input').forEach((i) => i.onchange = refilter);
+$('#scope').onchange = async () => { await api('session/scope', { all: $('#scope').value === 'all' }); refilter(); };
+$('#btnClearView').onclick = () => { clearView(); render(); };
+$('#btnCopy').onclick = () => {
+  const text = view.slice(-SHOW).map((r) => `${fmtT(r.t)} ${r.lvl || ''} ${r.tag}: ${r.msg}${r.stack ? '\n' + r.stack.map((s) => '    ' + s).join('\n') : ''}`).join('\n');
+  navigator.clipboard.writeText(text); toast('Copied ' + Math.min(view.length, SHOW) + ' lines', 'ok', 2000);
+};
+const logEl = $('#log');
+logEl.addEventListener('click', (e) => {
+  const row = e.target.closest('.r'); if (!row || !row.dataset.id || !row.classList.contains('has')) return;
+  const id = row.dataset.id; expanded.has(id) ? expanded.delete(id) : expanded.add(id); dirty = true;
+});
+function rowHtml(r) {
+  const has = !!(r.stack && r.stack.length) || (r.kind && r.body);
+  const open = expanded.has(String(r.id));
+  const cls = r.kind ? r.cls : `L${r.lvl}${r.x ? ' x' : ''}`;
+  const stack = open ? `<span class="stack">${esc(r.kind ? r.body : r.stack.join('\n'))}</span>` : '';
+  const mark = has ? `<span class="st">${open ? 'hide' : 'show'} ${r.kind ? 'details' : r.stack.length + ' stack lines'}</span>` : '';
+  return `<div class="r ${cls}${has ? ' has' : ''}" data-id="${r.id}"><span class="t">${fmtT(r.t)}</span>${r.kind ? '' : `<span class="g">${esc(r.tag)}</span>`}${esc(r.msg)}${mark}${stack}</div>`;
+}
+function render() {
+  dirty = false;
+  const slice = view.slice(-SHOW);
+  const stick = $('#auto').checked;
+  if (!rows.length && !(session && session.live)) logEl.innerHTML = checklistHtml();
+  else if (!slice.length) logEl.innerHTML = `<div class="empty">${rows.length ? 'No log lines match the filters.' : 'Waiting for logs from the app...'}</div>`;
+  else logEl.innerHTML = slice.map(rowHtml).join('');
+  $('#count').textContent = `${view.length.toLocaleString()} shown / ${rows.length.toLocaleString()} total`;
+  if (stick) logEl.scrollTop = logEl.scrollHeight;
+}
+let lastSig = '';
+setInterval(() => {
+  if (!rows.length) { const sg = checklistSig(); if (sg !== lastSig) { lastSig = sg; dirty = true; } }
+  if (dirty) render();
+}, 200);
+logEl.addEventListener('wheel', () => { if (logEl.scrollTop + logEl.clientHeight < logEl.scrollHeight - 40) $('#auto').checked = false; });
+
+// ---------- setup checklist (shown until the first log line arrives) ----------
+function checklistState() {
+  const dev = devices.find((d) => d.serial === selSerial && d.state === 'device');
+  const app = (apk && apk.package) ? (apkInstalled ? 'ok' : 'todo') : ($('#pkgSel').value.trim() ? 'ok' : 'todo');
+  const custom = curRules && defaultRules && curRules.start !== defaultRules.start;
+  return { adb: adbOk, dev: !!dev, devName: dev ? (dev.model || dev.serial) : '', app, hasApk: !!(apk && apk.package), custom,
+           live: !!(session && session.live) };
+}
+const checklistSig = () => JSON.stringify(checklistState());
+function checklistHtml() {
+  const s = checklistState();
+  const items = [
+    { ok: s.adb, title: 'adb tool', text: s.adb ? 'Ready.' : 'Missing. Use the "Download adb" button on the left.' },
+    { ok: s.dev, title: 'Connect a phone', text: s.dev ? `Connected: ${esc(s.devName)}` : 'Plug in USB, or pair over Wi-Fi.', act: s.dev ? '' : '<button data-act="qr">Pair with QR code</button>' },
+    { ok: s.app === 'ok', title: 'Choose the build',
+      text: s.app === 'ok' ? 'Build selected.' : s.hasApk ? 'APK read. Press "Install on phone" on the left.' : 'Drop the developer\'s .apk, or pick an app already on the phone.',
+      act: s.app === 'ok' ? '' : s.hasApk ? '<button data-act="install" class="primary">Install on phone</button>' : '<button data-act="apk">Choose APK</button>' },
+    { ok: s.custom, optional: true, title: 'Level times', text: s.custom ? 'Custom level events are set.' : 'Using default logs ([PM] LEVEL_START 3). If your game logs levels through Firebase (e.g. Steps), set it in the sidebar.',
+      act: s.custom ? '' : '<button data-act="levels">Set up levels</button>' },
+    { ok: s.live, title: 'Start the session', text: 'Then play on the phone. Logs, crashes, ANRs and level times appear here.',
+      act: s.dev && s.app === 'ok' ? '<button data-act="start" class="primary">Start session</button>' : '' },
+  ];
+  const rowsHtml = items.map((i, n) => `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)">
+    <div style="width:22px;text-align:center;font-weight:700;color:${i.ok ? 'var(--ok)' : 'var(--mut)'}">${i.ok ? '&#10003;' : n + 1}</div>
+    <div style="flex:1"><div style="font-weight:600">${i.title}${i.optional && !i.ok ? ' <span class="muted" style="font-weight:400">(optional)</span>' : ''}</div><div class="muted">${i.text}</div></div>
+    <div>${i.act || ''}</div></div>`).join('');
+  return `<div style="max-width:640px;margin:32px auto;padding:0 16px;font:13px/1.5 -apple-system,sans-serif;color:var(--fg)">
+    <div style="font-size:16px;font-weight:600;margin-bottom:2px">Get started</div>
+    <div class="muted" style="margin-bottom:8px">Follow these steps. Each one ticks off by itself. <a href="/guide.html" target="_blank">Full guide</a></div>${rowsHtml}</div>`;
+}
+logEl.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const a = b.dataset.act;
+  if (a === 'qr') $('#btnQr').click();
+  else if (a === 'apk') $('#file').click();
+  else if (a === 'install') $('#btnInstall').click();
+  else if (a === 'start') $('#btnStart').click();
+  else if (a === 'levels') { $('#fbEvent').scrollIntoView({ block: 'center' }); $('#fbEvent').focus(); }
+});
+
+// ---------- stream ----------
+function incidentRow(ev) {
+  const label = ev.type === 'anr' ? 'ANR' : ev.type === 'died' ? 'APP KILLED' : ev.kind === 'native' ? 'NATIVE CRASH' : 'CRASH';
+  return { id: 'ev' + ev.id, t: ev.t, kind: 'inc', cls: 'inc ' + (ev.type === 'anr' ? 'anr' : ''), msg: `${label}: ${ev.summary}${ev.level != null ? '  (Level ' + ev.level + ')' : ''}`, body: ev.text || '', evId: ev.id };
+}
+function apply(items) {
+  for (const it of items) {
+    const v = it.v;
+    if (it.k === 'line') { v.stack = v.stack || undefined; addRow(v); }
+    else if (it.k === 'stack') { const r = byId.get(v.id); if (r) { (r.stack = r.stack || []).push(v.line); dirty = true; } }
+    else if (it.k === 'crash' || it.k === 'anr' || it.k === 'died') {
+      if (v.type === 'died' && v.kind === 'closed') continue;
+      addRow(incidentRow(v));
+      toast(`${v.type === 'anr' ? 'ANR' : v.type === 'died' ? 'App killed' : 'CRASH'}: ${v.summary}`, v.type === 'anr' ? 'warn' : 'bad', 12000);
+    }
+    else if (it.k === 'anr-update') { const r = byId.get('ev' + v.id); if (r) { r.body += '\n\n===== ANR thread dump (dropbox) =====\n' + v.traces; dirty = true; } }
+    else if (it.k === 'level') {
+      const a = v.attempt;
+      if (v.phase === 'start') addRow({ id: 'lv' + a.id + '_' + a.n + 's', t: v.t, kind: 'lvl', cls: 'lvl', msg: `Level ${a.id} started (attempt ${a.n})${a.gapBefore != null ? ', ' + (a.gapBefore / 1000).toFixed(1) + 's since last level' : ''}` });
+      else addRow({ id: 'lv' + a.id + '_' + a.n + 'e', t: v.t, kind: 'lvl', cls: 'lvl ' + (a.outcome === 'complete' ? '' : 'fail'), msg: `Level ${a.id} ${a.outcome} in ${(a.duration / 1000).toFixed(1)}s` });
+    }
+    else if (it.k === 'reset') resetFrom(v);
+    else if (it.k === 'stopped') { session = { ...v, live: false }; paintSessionState(); syncButtons(); }
+  }
+}
+function resetFrom(snap) {
+  clearView();
+  if (!snap) { render(); return; }
+  session = { ...snap.meta, live: snap.meta.live };
+  paintSessionState();
+  for (const e of snap.entries) addRow(e);
+  for (const c of snap.summary.incidents) addRow(incidentRow(c));
+  for (const a of snap.summary.attempts) {
+    apply([{ k: 'level', v: { phase: 'start', t: a.start, attempt: a } }]);
+    if (a.end) apply([{ k: 'level', v: { phase: 'end', t: a.end, attempt: a } }]);
+  }
+  rows.sort((a, b) => a.t - b.t); refilter();
+  paintStats({ counts: snap.summary.counts, currentLevel: snap.summary.currentLevel, startupMs: snap.summary.startupMs, elapsed: Date.now() - snap.meta.startedAt, memoryKb: null });
+  syncButtons();
+}
+function connect() {
+  const es = new EventSource('/api/stream');
+  es.onmessage = (m) => {
+    const d = JSON.parse(m.data);
+    if (d.k === 'reset') resetFrom(d.v);
+    else if (d.k === 'batch') apply(d.v);
+    else if (d.k === 'stats') paintStats(d.v);
+    else if (d.k === 'device') { toast(d.v === 'offline' ? 'Phone disconnected - reconnecting…' : 'Phone reconnected', d.v === 'offline' ? 'warn' : 'ok'); }
+  };
+  es.onerror = () => { es.close(); setTimeout(connect, 2000); };
+}
+
+// ---------- report / history ----------
+function reportId() { return session ? (session.live ? 'live' : session.id) : 'live'; }
+function loadReport(id = reportId()) {
+  $('#repFrame').src = `/api/report/${encodeURIComponent(id)}.html?ts=${Date.now()}${themeQ()}`;
+  $('#repDownload').href = `/api/report/${encodeURIComponent(id)}.html?download=1${themeQ()}`;
+  $('#repOpen').href = `/api/report/${encodeURIComponent(id)}.html?x=1${themeQ()}`;
+  $('#repFrame').dataset.id = id;
+}
+$('#btnRepRefresh').onclick = () => loadReport($('#repFrame').dataset.id || reportId());
+$('#btnRepCopy').onclick = async () => {
+  const t = await (await fetch(`/api/report/${encodeURIComponent($('#repFrame').dataset.id || reportId())}.txt`)).text();
+  navigator.clipboard.writeText(t); toast('Summary copied - paste in Slack/Jira', 'ok', 3000);
+};
+async function loadHistory() {
+  const { sessions } = await api('sessions');
+  $('#histBody').innerHTML = sessions.length ? `<table><tr><th>Started</th><th>App</th><th>Build</th><th>Device</th><th>Crashes</th><th>ANRs</th><th>Levels</th><th></th></tr>${sessions.map((s) => `<tr>
+    <td>${new Date(s.startedAt).toLocaleString()}</td><td>${esc(s.pkg)}</td><td>${esc(s.build.versionName || '')} (${esc(s.build.versionCode || '')})</td>
+    <td>${esc(s.device.model || '')}</td><td style="color:${s.crashes ? 'var(--bad)' : 'inherit'}">${s.crashes}</td><td style="color:${s.anrs ? 'var(--warn)' : 'inherit'}">${s.anrs}</td><td>${s.levels}</td>
+    <td><button data-open="${esc(s.id)}">Report</button> <a href="/api/report/${encodeURIComponent(s.id)}.html?download=1"><button>Download</button></a> <button data-del="${esc(s.id)}">Delete</button></td></tr>`).join('')}</table>` : '<div class="empty">No saved sessions yet.</div>';
+  document.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => { document.querySelector('[data-tab=report]').click(); loadReport(b.dataset.open); });
+  document.querySelectorAll('[data-del]').forEach((b) => b.onclick = async () => { if (confirm('Delete this session?')) { await fetch('/api/sessions/' + encodeURIComponent(b.dataset.del), { method: 'DELETE' }); loadHistory(); } });
+}
+
+// ---------- theme ----------
+function applyTheme(t) {
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  $('#theme').value = t;
+}
+const savedTheme = (() => { try { return localStorage.getItem('theme') || 'auto'; } catch (_) { return 'auto'; } })();
+applyTheme(savedTheme);
+$('#theme').onchange = () => {
+  const t = $('#theme').value; applyTheme(t);
+  try { localStorage.setItem('theme', t); } catch (_) { /* private mode */ }
+  if ($('#repFrame').dataset.id) loadReport($('#repFrame').dataset.id);
+};
+const themeQ = () => { const t = $('#theme').value; return t === 'auto' ? '' : '&theme=' + t; };
+
+// ---------- boot ----------
+refreshStatus().then(loadPackages);
+setInterval(refreshStatus, 5000);
+connect();
+</script>
+</body>
+</html>

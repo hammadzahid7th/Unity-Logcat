@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unity Logcat PM - Guide</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--fg:#1d1f23;--mut:#666c75;--head:#f3f4f6;--line:#d8dbe0;--acc:#0b63ce;--ok:#1d7a3e;--bad:#c4262e;--warn:#946200}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1d20;--fg:#dcdee2;--mut:#9399a2;--head:#26282c;--line:#3a3d43;--acc:#5b9df0;--ok:#62b97d;--bad:#ef7770;--warn:#d6a23f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:28px 20px 70px}
+h1{font-size:24px;margin:0}h2{font-size:17px;margin:38px 0 12px;display:flex;align-items:center;gap:10px}
+h2 .n{background:var(--acc);color:#fff;width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font-size:13px}
+.muted{color:var(--mut)}a{color:var(--acc)}
+svg{stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:20px 0 0}
+.flow div{text-align:center;padding:14px 6px 10px;border:1px solid var(--line);background:var(--head);position:relative}
+.flow svg{width:34px;height:34px;color:var(--acc)}.flow>div>b{display:block;margin-top:4px}.flow span{font-size:12px;color:var(--mut)}
+.flow div:not(:last-child)::after{content:"\203A";position:absolute;right:-9px;top:38%;color:var(--mut);font-size:20px;background:var(--bg);line-height:1;z-index:1}
+.path{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.chip{border:1px solid var(--line);background:var(--head);padding:3px 10px;border-radius:3px;font-size:13px}
+.arrow{color:var(--mut)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card{border:1px solid var(--line);padding:14px;background:var(--head)}
+.card.best{border-color:var(--ok)}.card svg{width:30px;height:30px;color:var(--acc)}
+.card>b{display:block;margin:6px 0 2px}.card .tag{float:right;font-size:11px;color:var(--ok);font-weight:600}
+.card span{color:var(--mut);font-size:13.5px}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.stat{border:1px solid var(--line);padding:12px 8px;text-align:center;background:var(--head)}
+.stat svg{width:26px;height:26px}.stat>b{display:block;font-size:13.5px;margin-top:4px}
+.red{color:var(--bad)}.amb{color:var(--warn)}.blue{color:var(--acc)}.grn{color:var(--ok)}
+.warn{border-left:3px solid var(--bad);background:var(--head);padding:8px 12px;margin:12px 0;font-size:14px}
+details{border-bottom:1px solid var(--line);padding:8px 0}summary{cursor:pointer;font-weight:600}details p{margin:6px 0 2px;color:var(--mut)}
+code{font:12.5px ui-monospace,Menlo,monospace;background:var(--head);border:1px solid var(--line);padding:0 5px}
+ul.short{list-style:none;padding:0;margin:0}ul.short li{padding:6px 0;border-bottom:1px solid var(--line)}
+@media(max-width:700px){.flow,.grid5{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:1fr}.flow div::after{display:none}}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>Unity Logcat PM</h1>
+<div class="muted">Build test karo. Crash, ANR, level time ki report lo.</div>
+
+<div class="flow">
+  <div><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><b>Phone</b><span>Debugging on</span></div>
+  <div><svg viewBox="0 0 24 24"><path d="M5 12a10 10 0 0 1 14 0M8 15a6 6 0 0 1 8 0"/><circle cx="12" cy="19" r="1"/></svg><b>Connect</b><span>QR scan</span></div>
+  <div><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><b>Install</b><span>APK drop</span></div>
+  <div><svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg><b>Play</b><span>Start session</span></div>
+  <div><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><b>Report</b><span>Download</span></div>
+</div>
+
+<h2><span class="n">0</span> App kholna</h2>
+<div class="path"><span class="chip">Unity Logcat PM.app</span><span class="arrow">&rarr;</span><span class="chip">double-click</span></div>
+<div class="warn"><b>"Unidentified developer"?</b> Right-click &rarr; <b>Open</b> &rarr; <b>Open</b>. (Naye Mac: System Settings &rarr; Privacy &amp; Security &rarr; <b>Open Anyway</b>.) Sirf ek baar.</div>
+
+<h2><span class="n">1</span> Phone (ek baar)</h2>
+<div class="path">
+  <span class="chip">Settings</span><span class="arrow">&rarr;</span><span class="chip">About phone</span><span class="arrow">&rarr;</span><span class="chip">Build number &times; 7</span>
+</div>
+<div class="path" style="margin-top:8px">
+  <span class="chip">Developer options</span><span class="arrow">&rarr;</span><span class="chip">USB debugging ON</span><span class="arrow">&amp;</span><span class="chip">Wireless debugging ON</span>
+</div>
+<p class="muted">Phone aur Mac <b>same Wi-Fi</b> pe.</p>
+
+<h2><span class="n">2</span> Connect</h2>
+<div class="cards">
+  <div class="card best"><span class="tag">BEST</span>
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3M21 14v7h-4"/></svg>
+    <b>QR code</b><span>Tool me <b>Pair with QR</b>. Phone: Wireless debugging &rarr; <b>Pair with QR</b>. Scan.</span></div>
+  <div class="card">
+    <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M7 12h.01M11 12h.01M15 12h.01"/></svg>
+    <b>Pairing code</b><span>Phone ka IP:port + code &rarr; <b>Pair</b>. Phir <b>doosra</b> IP:port &rarr; <b>Connect</b>.</span></div>
+  <div class="card">
+    <svg viewBox="0 0 24 24"><path d="M12 3v12M8 7l4-4 4 4"/><rect x="8" y="15" width="8" height="6" rx="1"/></svg>
+    <b>USB cable</b><span>Cable lagao, phone pe <b>Allow</b>. Phir chaho to <b>Switch to Wi-Fi</b>.</span></div>
+</div>
+
+<h2><span class="n">3</span> Build</h2>
+<div class="cards">
+  <div class="card">
+    <svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+    <b>APK drop</b><span>File drag karo &rarr; <b>Install on phone</b>.</span></div>
+  <div class="card">
+    <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>
+    <b>Phone ki app</b><span>List se chuno. Nayi app sabse upar.</span></div>
+  <div class="card">
+    <svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></svg>
+    <b>Signature error?</b><span><b>Clean install</b> tick karo.</span></div>
+</div>
+
+<h2><span class="n">4</span> Levels (optional)</h2>
+<ul class="short">
+  <li><b>Firebase game:</b> event naam + <code>Started</code> + <code>Ended</code> &rarr; <b>Use this Firebase event</b></li>
+  <li><b>Simple logs:</b> developer ko <code>PMLog.cs</code> do (sidebar link)</li>
+</ul>
+
+<h2><span class="n">5</span> Play &amp; Report</h2>
+<div class="path"><span class="chip">Start session</span><span class="arrow">&rarr;</span><span class="chip">Phone pe khelo</span><span class="arrow">&rarr;</span><span class="chip">Stop</span><span class="arrow">&rarr;</span><span class="chip">Report tab</span></div>
+<div class="grid5" style="margin-top:14px">
+  <div class="stat"><svg class="red" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg><b>Crash</b></div>
+  <div class="stat"><svg class="amb" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>ANR (atak)</b></div>
+  <div class="stat"><svg class="blue" viewBox="0 0 24 24"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><b>Level time</b></div>
+  <div class="stat"><svg class="blue" viewBox="0 0 24 24"><path d="M4 12h16M16 8l4 4-4 4M8 8l-4 4 4 4"/></svg><b>Level delay</b></div>
+  <div class="stat"><svg class="grn" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><b>Session time</b></div>
+</div>
+<div class="path" style="margin-top:14px"><span class="chip">Download HTML &rarr; developer ko bhejo</span><span class="chip">Copy summary &rarr; Slack</span></div>
+
+<h2>Masla?</h2>
+<details><summary>Phone list me nahi</summary><p>Debugging on? Same Wi-Fi? <b>Refresh</b>. USB me phone pe <b>Allow</b>.</p></details>
+<details><summary>"failed to connect"</summary><p>Pairing port use hua. Main Wireless debugging screen ka <b>doosra</b> port do.</p></details>
+<details><summary>QR scan ke baad kuch nahi</summary><p>Office/guest Wi-Fi mDNS block karta hai. Pairing code ya USB use karo.</p></details>
+<details><summary>Level times nahi aaye</summary><p>Log me <code>Steps</code> ya <code>LEVEL</code> search karo. Ek line developer ko dikhao.</p></details>
+<details><summary>App launch nahi hui</summary><p><b>(Re)launch</b> untick karo, phone pe khud kholo.</p></details>
+<details><summary>Tool khulta nahi</summary><p>Internet check (pehli baar download). Log: <code>~/Library/Application Support/UnityLogcatPM/app.log</code></p></details>
+
+<h2>Developers ke liye</h2>
+<ul class="short">
+  <li>APK do (AAB nahi)</li>
+  <li>Level log: <code>PMLog.LevelStart(id)</code> / <code>LevelComplete(id)</code> / <code>LevelFail(id)</code> ya Firebase event</li>
+  <li>Unity &rarr; Player &rarr; <b>Stack Trace Logging = ScriptOnly</b> (stack milta hai)</li>
+</ul>
+
+</div></body></html>
