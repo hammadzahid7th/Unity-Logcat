@@ -1,87 +1,90 @@
+<div align="center">
+
 # Unity Logcat PM
 
-Standalone test companion for Unity Android builds, made for product managers.
-Get an APK from a developer → install it on a phone (USB or Wi-Fi) → play → see live logs, crashes, ANRs
-and per-level timings → export a report to send back to the developer.
+**Test a Unity Android build on a real phone.<br>Get crashes, ANRs and level times in one report.**
 
-Runs locally on `http://localhost:7878`. No install step: nothing to `npm install`.
+No command line. No Android Studio. Drop an APK, play, send the report.
 
-## Start (Mac)
+![Platform](https://img.shields.io/badge/platform-macOS-black)
+![Android](https://img.shields.io/badge/Android-11%2B%20wireless-3DDC84)
+![Dependencies](https://img.shields.io/badge/dependencies-none-blue)
 
-1. Unzip, then **double-click `start.command`**.
-2. First run only: it downloads what is missing into the `tools/` folder (a private Node.js ~45 MB and Google's `adb` ~10 MB, no admin password). Later runs start instantly.
-3. The browser opens by itself.
+<img src="docs/live.png" alt="Live logs with crash, ANR and level markers" width="900">
 
-If macOS says the file "cannot be opened because it is from an unidentified developer" (common for zips received over Slack/email):
-**right-click `start.command` → Open → Open**. Or run once in Terminal: `xattr -dr com.apple.quarantine <folder>`.
+</div>
 
-Already have Node 18+ or adb (Android Studio, Unity's Android module)? They are detected and used instead.
-Terminal alternative: `./start.command` or `node server.js`.
+## Why
 
-## Flow
+A developer sends you a build. You play it. Something breaks, but you have no logs, no stack trace and no idea which level it happened on.
 
-1. **Phone** - USB (enable *Developer options → USB debugging*) or Wi-Fi (phone and Mac on the same network):
-   - Android 11+: **Pair with QR code** → on the phone *Wireless debugging → Pair device with QR code* → scan. Pairs and connects by itself (needs internet once to draw the QR, and mDNS allowed on the router).
-   - Or "Pair with code": the pairing IP:port + 6-digit code, then **Connect** using the *different* IP:port on the main Wireless debugging screen.
-   - Older phones: plug in once → **Switch USB phone to Wi-Fi** → unplug.
-2. **Build** - drop the `.apk` (package, version, IL2CPP/Mono, ABIs are read from the file) → **Install**.
-   "Clean install" uninstalls first (needed when the signing key differs). Or pick any app already on the phone:
-   the list shows only apps with a launcher icon, newest install/update first ("Include system apps" adds Chrome etc.); you can also type a bundle id.
-3. **Start session** → play. Stop = saved in **History**; **Report** tab = shareable HTML (download or copy a Slack summary).
+With this tool you see it as it happens, and you hand the developer proof:
 
-## What you get
-
-| Feature | How it is detected |
+| You get | Example |
 |---|---|
-| Java crash | `AndroidRuntime: FATAL EXCEPTION` blocks for your package |
-| Native crash (typical for Unity/IL2CPP) | tombstone in `DEBUG`: signal, crashing library, backtrace |
-| ANR | `ActivityManager: ANR in <pkg>` + reason, plus thread dump from `dumpsys dropbox` (best effort, no root) |
-| Unexpected kill | "Process has died" with no crash/ANR next to it (low-memory killer etc). Swipe-away is ignored |
-| Script errors/exceptions | `E` logs from your app, grouped by message, with the C# stack |
-| Cold start time | `Displayed <pkg>/...: +1s480ms` |
-| Level timings | your own debug logs (below) |
-| Crash → level | every crash/ANR is attributed to the level being played |
-| Memory | `dumpsys meminfo` PSS sampled every 10 s |
-| Phone drops off Wi-Fi | auto-reconnect, shown in the report |
+| **Crashes** | `SIGSEGV in libil2cpp.so` during Level 3, with the backtrace |
+| **ANRs** | `Input dispatching timed out` during Level 2 |
+| **Level times** | Level 3 takes 22s on average, 9s of delay before it |
+| **Session time** | App launches, how long each lasted, time inside levels |
+| **Errors with stacks** | Same errors grouped, with the C# stack |
 
-## Level timing
+<div align="center">
+<img src="docs/report.png" alt="Build report" width="560">
+</div>
 
-**Firebase Analytics event** (e.g. event `Steps` with params `Started` / `Ended`): type the event and parameter names in the sidebar and press
-*Use this Firebase event*. It matches Firebase's own log line (`name=Steps,params=Bundle[{Started=3}]`) and the game's Unity log
-(`Steps | STARTED: Level 3`, `Steps | STARTED already sent previously for Level 3`, `Steps | ENDED: Level 3`). The choice is saved in `rules.json`.
-The tool also turns on Firebase's verbose logging (`log.tag.FA`) at session start.
+## Start in 3 steps (Mac)
 
-Plain logs:
+1. Unzip and double-click **Unity Logcat PM.app**.
+2. Wait about a minute the first time (it fetches `adb`). The tool opens in your browser.
+3. Follow the **Get started** checklist on screen.
 
-Ask the developers to add `unity/PMLog.cs` and call `PMLog.LevelStart(id)`, `PMLog.LevelComplete(id)`,
-`PMLog.LevelFail(id)` (these just `Debug.Log("[PM] LEVEL_START 3")`). Existing logs work too:
-the patterns are editable in the sidebar (regex, first group = level id) and the live session is re-analyzed on save.
-Default patterns already match things like `LEVEL_START 3`, `Level 3 started`, `LEVEL_COMPLETE 3`, `Level 3 failed`.
+> macOS says "unidentified developer"? Right-click the app → **Open** → **Open**.
+> Newer macOS: System Settings → Privacy & Security → **Open Anyway**. One time only.
 
-Report shows per level: tries, won/failed/quit, crashed, ANR, avg / median / min / max time and the delay before it (gap since the previous level),
-plus session time, time inside levels, average/longest delay and each app launch (process) with its duration.
-Custom milestones: `PMLog.Event("tutorial_done")`.
+Stuck? Click **Guide** in the tool's header. It is short and has pictures.
 
-## Stack traces for your own `Debug.Log`s
+## How it works
 
-Unity: *Project Settings → Player → Other Settings → Stack Trace Logging* → `ScriptOnly` for Error / Exception / Warning
-(and Log if you want it for every log). Stacks are then folded under each log line (click a row to expand).
-Release (non-development) builds work too; development builds just give richer info.
+| | |
+|---|---|
+| **1. Phone** | Turn on Developer options → USB debugging and Wireless debugging |
+| **2. Connect** | **Pair with QR code**, a pairing code, or a USB cable |
+| **3. Build** | Drop the `.apk` and press **Install**, or pick any app already on the phone |
+| **4. Play** | **Start session**, play, press **Stop** |
+| **5. Report** | **Report** tab → **Download HTML** or **Copy summary** for Slack |
 
-## Safety
+## Level times
 
-The server only listens on `127.0.0.1` and rejects requests whose Host/Origin is not localhost (so a website you visit cannot drive your phone).
-Package names, device serials and install paths are validated. Saved sessions in `sessions/` contain raw device logs - delete them from History if they hold anything sensitive.
-Theme: Auto / Light / Dark in the header (also applied to the report).
+The game has to log when a level starts and ends. Pick one:
 
-## Files
+- **Firebase event** (for example `Steps` with `Started` / `Ended`): type the names in the sidebar, press **Use this Firebase event**.
+- **Plain logs:** add [`unity/PMLog.cs`](unity/PMLog.cs) and call `PMLog.LevelStart(id)`, `PMLog.LevelComplete(id)`, `PMLog.LevelFail(id)`.
+- **Anything else:** edit the patterns (regex) in the sidebar.
 
-- `server.js` - local HTTP + SSE server
-- `lib/adb.js` - adb wrapper · `lib/apk.js` - APK reader · `lib/analyzer.js` - crash/ANR/level logic · `lib/report.js` - HTML report
-- `public/index.html` - UI · `sessions/` - saved sessions · `test/` - `npm test`, plus `fake-adb.sh` to try the UI without a phone
+For developers: set Unity → Player → **Stack Trace Logging** to `ScriptOnly` to get C# stacks.
 
-## Known limits
+## Run from source
 
-- Only APK (not AAB). OBB/split-binary builds: install the OBB separately.
-- ANR thread dumps depend on the device exposing `dumpsys dropbox` to adb.
-- One live session at a time.
+Needs Node.js 18+. No `npm install`.
+
+```bash
+./start.command        # or: node server.js   → http://localhost:7878
+npm test               # parser and analyzer tests
+./make-app.sh          # builds dist/Unity Logcat PM.app and a zip
+```
+
+```
+server.js          local web server
+lib/adb.js         talks to the phone
+lib/analyzer.js    finds crashes, ANRs and levels
+lib/report.js      builds the HTML report
+public/            the UI and the guide
+unity/PMLog.cs     helper for developers
+```
+
+## Good to know
+
+- `.apk` only (not `.aab`). One live session at a time. Tested on macOS; Windows is not supported yet.
+- Runs only on your Mac (`127.0.0.1`). Other websites cannot control it.
+- Sessions hold raw device logs and are saved on your Mac (`~/Library/Application Support/UnityLogcatPM` for the app, `./sessions` from source). Delete them in the **History** tab if needed.
+- ANR thread dumps are not available on every phone.

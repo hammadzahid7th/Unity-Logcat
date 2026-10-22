@@ -520,6 +520,7 @@ function resetFrom(snap) {
   rows.sort((a, b) => a.t - b.t); refilter();
   paintStats({ counts: snap.summary.counts, currentLevel: snap.summary.currentLevel, startupMs: snap.summary.startupMs, elapsed: Date.now() - snap.meta.startedAt, memoryKb: null });
   syncButtons();
+  render();
 }
 function connect() {
   const es = new EventSource('/api/stream');
@@ -561,7 +562,7 @@ function applyTheme(t) {
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
   $('#theme').value = t;
 }
-const savedTheme = (() => { try { return localStorage.getItem('theme') || 'auto'; } catch (_) { return 'auto'; } })();
+const savedTheme = new URLSearchParams(location.search).get('theme') || (() => { try { return localStorage.getItem('theme') || 'auto'; } catch (_) { return 'auto'; } })();
 applyTheme(savedTheme);
 $('#theme').onchange = () => {
   const t = $('#theme').value; applyTheme(t);
