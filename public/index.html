@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <title>Unity Logcat PM</title>
 <style>
 :root{color-scheme:light dark;--bg:#f3f4f6;--panel:#ffffff;--panel2:#fafafb;--line:#d8dbe0;--fg:#1d1f23;--mut:#666c75;--acc:#0b63ce;--accfg:#fff;--ok:#1d7a3e;--warn:#946200;--bad:#c4262e;--sel:#e7f0fc;--hover:#f0f2f5;--mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
@@ -68,6 +69,19 @@ iframe{flex:1;border:0;background:#fff;min-height:0}
 .toast .bad{border-left-color:var(--bad)}.toast .ok{border-left-color:var(--ok)}.toast .warn{border-left-color:var(--warn)}
 .banner{background:color-mix(in srgb,var(--warn) 14%,transparent);border-bottom:1px solid var(--warn);padding:10px 14px}
 a{color:var(--acc)}
+.tab.report{color:var(--acc);font-weight:600}.tab.report.on{border-bottom-color:var(--acc)}
+.badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;font:600 11px/17px var(--mono);text-align:center;background:var(--ok);color:#fff;vertical-align:1px}
+.badge.bad{background:var(--bad)}.badge.pulse{animation:pulse 1.4s ease-in-out 3}
+@keyframes pulse{50%{transform:scale(1.35)}}
+.seg{display:flex;margin:10px 0 8px}.seg button{flex:1;border-radius:0;margin-left:-1px;padding:4px 6px}
+.seg button:first-child{border-radius:4px 0 0 4px;margin-left:0}.seg button:last-child{border-radius:0 4px 4px 0}
+.seg button.on{background:var(--sel);border-color:var(--acc);color:var(--fg);position:relative;font-weight:600}
+.pane{display:none}.pane.on{display:block}
+.help{margin-top:8px;font-size:12px}
+.fb{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:6px 0}.fb label,.adv label{display:block;font-size:11px;color:var(--mut)}.fb input{margin-top:2px}
+.adv{margin-top:8px}.adv summary{cursor:pointer;color:var(--mut)}.adv label{margin-top:6px}.adv textarea{margin-top:2px}
+.chk{display:flex;gap:6px;margin:2px 0}.chk b.ok{color:var(--ok)}.chk b.no{color:var(--bad)}
+
 </style>
 </head>
 <body>
@@ -75,7 +89,7 @@ a{color:var(--acc)}
   <h1>Unity Logcat PM</h1>
   <div class="tabs">
     <button class="tab on" data-tab="live">Live</button>
-    <button class="tab" data-tab="report">Report</button>
+    <button class="tab report" data-tab="report">Report <span id="repBadge" class="badge" style="display:none"></span></button>
     <button class="tab" data-tab="history">History</button>
   </div>
   <span class="sp"></span>
@@ -93,19 +107,31 @@ a{color:var(--acc)}
 
   <section class="box">
     <h3>Phone <button id="btnRefresh" class="small">Refresh</button></h3>
-    <div id="devices"><div class="muted">No device. Plug in via USB (USB debugging on) or connect over Wi-Fi below.</div></div>
-    <div class="row"><input type="text" id="addr" placeholder="Wi-Fi: 192.168.1.20:5555"><button id="btnConnect">Connect</button></div>
-    <div class="row"><button id="btnWireless" class="grow" disabled title="Plug in USB once, click this, then unplug">Switch USB phone to Wi-Fi</button></div>
-    <div class="row"><button id="btnQr" class="grow">Pair with QR code</button></div>
-    <div id="qrBox" style="display:none;text-align:center">
-      <div id="qrImg" style="background:#fff;display:inline-block;padding:8px;border-radius:8px"></div>
-      <div class="small muted" id="qrMsg">Phone: Developer options → Wireless debugging → Pair device with <b>QR code</b> → scan this.</div>
+    <div id="devices"><div class="muted">No phone yet. Choose how to connect below.</div></div>
+
+    <div class="seg" id="seg" role="tablist">
+      <button data-ptab="usb" class="on">USB cable</button><button data-ptab="qr">Wi-Fi (QR)</button><button data-ptab="manual">Manual</button>
     </div>
-    <details class="small"><summary class="muted">Pair with code instead</summary>
-      <div class="row"><input type="text" id="pairAddr" placeholder="Pair IP:port (from phone)"></div>
-      <div class="row"><input type="text" id="pairCode" placeholder="6-digit code"><button id="btnPair">Pair</button></div>
-      <div class="muted">Phone: Developer options → Wireless debugging → Pair device with pairing code. Then use the main IP:port shown there in Connect.</div>
-    </details>
+    <div class="pane on" id="p-usb">
+      <div class="muted small">Plug in the cable and tap <b>Allow</b> on the phone.</div>
+      <div class="row"><button id="btnWireless" class="grow" disabled title="Needs a phone connected by USB">Switch to Wi-Fi (then unplug)</button></div>
+    </div>
+    <div class="pane" id="p-qr">
+      <div class="muted small">Phone: Wireless debugging &rarr; Pair device with QR code.</div>
+      <div class="row"><button id="btnQr" class="grow">Show QR code</button></div>
+      <div id="qrBox" style="display:none;text-align:center">
+        <div id="qrImg" style="background:#fff;display:inline-block;padding:8px;border-radius:6px"></div>
+        <div class="small muted" id="qrMsg"></div>
+      </div>
+    </div>
+    <div class="pane" id="p-manual">
+      <div class="small muted">1. Pair once (from the phone's pairing popup)</div>
+      <div class="row"><input type="text" id="pairAddr" placeholder="IP:port"><input type="text" id="pairCode" placeholder="6-digit code" style="width:110px"><button id="btnPair">Pair</button></div>
+      <div class="small muted">2. Connect (IP:port on the main Wireless debugging screen)</div>
+      <div class="row"><input type="text" id="addr" placeholder="192.168.1.20:41234"><button id="btnConnect">Connect</button></div>
+    </div>
+    <div class="help"><a href="#" id="btnDoctor">Can't see my phone?</a></div>
+    <div id="doctor" class="small" style="display:none"></div>
   </section>
 
   <section class="box">
@@ -128,18 +154,23 @@ a{color:var(--acc)}
   </section>
 
   <section class="box">
-    <h3>Level log patterns</h3>
-    <div class="muted small">Firebase Analytics event (works in release builds):</div>
-    <div class="row"><input type="text" id="fbEvent" value="Steps" title="Event name"><input type="text" id="fbStart" value="Started" title="Start parameter"><input type="text" id="fbEnd" value="Ended" title="End parameter"></div>
-    <div class="row small muted"><span class="grow">event name / start param / end param</span></div>
+    <h3>Level times</h3>
+    <div class="muted small">Firebase event your game sends:</div>
+    <div class="fb">
+      <label>Event<input type="text" id="fbEvent" value="Steps"></label>
+      <label>Start param<input type="text" id="fbStart" value="Started"></label>
+      <label>End param<input type="text" id="fbEnd" value="Ended"></label>
+    </div>
     <div class="row"><button id="btnFb" class="grow">Use this Firebase event</button></div>
-    <div class="muted small" style="margin-top:8px">Or plain log patterns (case-insensitive regex, first group = level id):</div>
-    <div class="small muted">Start</div><textarea id="rStart" rows="2"></textarea>
-    <div class="small muted">Complete</div><textarea id="rEnd" rows="2"></textarea>
-    <div class="small muted">Fail</div><textarea id="rFail" rows="2"></textarea>
-    <div class="small muted">Custom event</div><textarea id="rEvent" rows="1"></textarea>
-    <div class="row"><button id="btnRules" class="grow">Save &amp; re-analyze</button><button id="btnRulesReset">Defaults</button></div>
-    <div class="small"><a href="/unity/PMLog.cs" style="color:var(--acc)">Get PMLog.cs for developers</a></div>
+    <details class="small adv"><summary>Advanced: custom log patterns</summary>
+      <div class="muted">Case-insensitive regex. The first group is the level id.</div>
+      <label>Start<textarea id="rStart" rows="2"></textarea></label>
+      <label>Complete<textarea id="rEnd" rows="2"></textarea></label>
+      <label>Fail<textarea id="rFail" rows="2"></textarea></label>
+      <label>Custom event<textarea id="rEvent" rows="1"></textarea></label>
+      <div class="row"><button id="btnRules" class="grow">Save &amp; re-analyze</button><button id="btnRulesReset">Defaults</button></div>
+      <div><a href="/unity/PMLog.cs">Get PMLog.cs for developers</a></div>
+    </details>
   </section>
 </aside>
 
@@ -156,9 +187,9 @@ a{color:var(--acc)}
   </div>
   <div class="filters">
     <div class="lv" id="lv">
-      <label style="color:#9aa6b6"><input type="checkbox" value="V" checked><span>V</span></label>
-      <label style="color:#8bb4e8"><input type="checkbox" value="D" checked><span>D</span></label>
-      <label style="color:#d8dee8"><input type="checkbox" value="I" checked><span>I</span></label>
+      <label style="color:var(--mut)"><input type="checkbox" value="V" checked><span>V</span></label>
+      <label style="color:var(--acc)"><input type="checkbox" value="D" checked><span>D</span></label>
+      <label style="color:var(--fg)"><input type="checkbox" value="I" checked><span>I</span></label>
       <label style="color:var(--warn)"><input type="checkbox" value="W" checked><span>W</span></label>
       <label style="color:var(--bad)"><input type="checkbox" value="E" checked><span>E</span></label>
     </div>
@@ -217,12 +248,27 @@ document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
 });
 
 // ---------- devices ----------
+// One phone can show up several times (USB + Wi-Fi + mDNS name). Show it once, preferring USB.
+function dedupeDevices(list) {
+  const rank = (d) => (!d.wifi ? 0 : /^\d+\.\d+\.\d+\.\d+:\d+$/.test(d.serial) ? 1 : 2);
+  const groups = new Map(); const out = [];
+  for (const d of list) {
+    if (d.state !== 'device' || !d.hw) { out.push(d); continue; }
+    const g = groups.get(d.hw);
+    if (!g) { const c = { ...d, via: [d.wifi ? 'Wi-Fi' : 'USB'] }; groups.set(d.hw, c); out.push(c); continue; }
+    const label = d.wifi ? 'Wi-Fi' : 'USB';
+    if (!g.via.includes(label)) g.via.push(label);
+    if (rank(d) < rank(g)) Object.assign(g, { serial: d.serial, wifi: d.wifi, model: d.model || g.model });
+  }
+  return out;
+}
+const STATE_TEXT = { unauthorized: 'Tap Allow on phone', offline: 'Offline - replug', 'no permissions': 'No permission', connecting: 'Connecting' };
 async function refreshStatus() {
   const s = await api('status');
   $('#adbState').textContent = s.adb ? 'adb ' + (s.adb.version || 'ok') : 'adb missing';
   $('#adbState').className = 'pill ' + (s.adb ? 'ok' : 'bad');
   $('#adbBanner').style.display = s.adb ? 'none' : 'block';
-  devices = s.devices;
+  devices = dedupeDevices(s.devices);
   defaultRules = s.defaultRules; curRules = s.rules; adbOk = !!s.adb;
   if (!document.activeElement.matches('#rules textarea,.box textarea')) fillRules(s.rules);
   if (!selSerial || !devices.find((d) => d.serial === selSerial)) selSerial = (devices.find((d) => d.state === 'device') || {}).serial || null;
@@ -236,7 +282,7 @@ function renderDevices() {
   if (!devices.length) { el.innerHTML = '<div class="muted">No device. Plug in via USB (USB debugging on) or connect over Wi-Fi below.</div>'; return; }
   el.innerHTML = devices.map((d) => `<div class="dev ${d.serial === selSerial ? 'sel' : ''}" data-s="${esc(d.serial)}">
     <div class="n"><b>${esc(d.model || d.serial)}</b><div class="small muted">${esc(d.serial)}</div></div>
-    <span class="pill ${d.state === 'device' ? 'ok' : 'bad'}">${d.state === 'device' ? (d.wifi ? 'Wi-Fi' : 'USB') : esc(d.state)}</span></div>`).join('');
+    <span class="pill ${d.state === 'device' ? 'ok' : 'bad'}">${d.state === 'device' ? esc((d.via || [d.wifi ? 'Wi-Fi' : 'USB']).join(' + ')) : esc(STATE_TEXT[d.state] || d.state)}</span></div>`).join('');
   el.querySelectorAll('.dev').forEach((n) => n.onclick = () => { selSerial = n.dataset.s; renderDevices(); syncButtons(); loadPackages(); });
 }
 function syncButtons() {
@@ -252,28 +298,42 @@ $('#btnRefresh').onclick = refreshStatus;
 $('#btnConnect').onclick = async () => {
   const addr = $('#addr').value.trim(); if (!addr) return;
   const r = await api('connect', { addr: addr.includes(':') ? addr : addr + ':5555' });
-  toast(r.msg, r.ok ? 'ok' : 'bad'); refreshStatus();
+  toast(r.ok ? r.msg : (r.hint ? r.hint + '  [' + r.msg + ']' : r.msg), r.ok ? 'ok' : 'bad', r.ok ? 6000 : 14000); refreshStatus();
 };
 $('#btnPair').onclick = async () => {
   const r = await api('pair', { addr: $('#pairAddr').value.trim(), code: $('#pairCode').value.trim() });
-  toast(r.msg, r.ok ? 'ok' : 'bad');
+  toast(r.ok ? r.msg : (r.hint ? r.hint + '  [' + r.msg + ']' : r.msg), r.ok ? 'ok' : 'bad', r.ok ? 6000 : 14000);
 };
 $('#btnWireless').onclick = async () => {
   $('#btnWireless').disabled = true;
   const r = await api('go-wireless', { serial: selSerial });
   toast(r.msg, r.ok ? 'ok' : 'bad', 9000); refreshStatus();
 };
+document.querySelectorAll('#seg button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('#seg button').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.pane').forEach((p) => p.classList.toggle('on', p.id === 'p-' + b.dataset.ptab));
+});
+$('#btnDoctor').onclick = async (e) => {
+  e.preventDefault();
+  const box = $('#doctor'); box.style.display = 'block'; box.innerHTML = '<div class="muted">Checking...</div>';
+  const r = await api('doctor');
+  const bad = r.checks.filter((c) => !c.ok);
+  box.innerHTML = (bad.length ? bad : r.checks).map((c) => `<div class="chk"><b class="${c.ok ? 'ok' : 'no'}">${c.ok ? '&#10003;' : '!'}</b><span><b>${esc(c.title)}</b> <span class="muted">${esc(c.detail)}</span></span></div>`).join('')
+    + (bad.length ? '' : '<div class="muted" style="margin-top:2px">All checks passed.</div>')
+    + (bad.length ? `<ol style="margin:6px 0 0;padding-left:18px">${r.advice.map((a) => `<li>${esc(a)}</li>`).join('')}</ol>` : '');
+};
 let qrTimer = null;
 $('#btnQr').onclick = async () => {
   if (typeof QRCode === 'undefined') return toast('QR library could not load (needs internet). Use the pairing-code option.', 'bad');
   const r = await api('qr/start', {});
-  $('#qrBox').style.display = 'block'; $('#qrImg').innerHTML = '';
+  $('#qrBox').style.display = 'block'; $('#qrImg').innerHTML = ''; $('#qrMsg').textContent = 'Scan this with the phone.';
   new QRCode($('#qrImg'), { text: r.payload, width: 190, height: 190 });
-  clearInterval(qrTimer);
+  clearInterval(qrTimer); const qrT0 = Date.now();
   qrTimer = setInterval(async () => {
     const s = await api('qr/status');
     const m = { waiting: 'Waiting for the phone to scan…', pairing: 'Pairing…', paired: 'Paired - connecting…' }[s.state];
-    if (m) $('#qrMsg').textContent = m + (s.msg ? ' (' + s.msg + ')' : '');
+    const slow = s.state === 'waiting' && Date.now() - qrT0 > 25000 ? ' Not seen yet? Check both are on the same Wi-Fi, or use "Pair with code" below.' : '';
+    if (m) $('#qrMsg').textContent = m + (s.msg ? ' (' + s.msg + ')' : '') + slow;
     if (s.state === 'connected') { clearInterval(qrTimer); $('#qrBox').style.display = 'none'; toast('Phone connected over Wi-Fi', 'ok'); refreshStatus(); }
     if (s.state === 'timeout') { clearInterval(qrTimer); $('#qrMsg').textContent = 'Timed out. Click the QR button to try again, or use the pairing code.'; }
   }, 1500);
@@ -313,7 +373,7 @@ $('#btnInstall').onclick = async () => {
     if (fresh.length === 1) apk.package = fresh[0];
     else toast('Installed, but could not tell which app it is - pick it from the installed-apps list.', 'warn', 10000);
   }
-  toast(r.ok ? 'Installed ' + (apk.package || '') : (r.hint || r.msg), r.ok ? 'ok' : 'bad', 10000);
+  toast(r.ok ? 'Installed ' + (apk.package || '') : (r.hint ? r.hint + '  [' + r.msg.slice(0, 120) + ']' : r.msg), r.ok ? 'ok' : 'bad', 16000);
   syncButtons(); loadPackages();
 };
 async function loadPackages() {
@@ -335,7 +395,12 @@ $('#btnStart').onclick = async () => {
   const r = await api('session/start', { serial: selSerial, pkg, build, clear: $('#optClear').checked, launch: $('#optLaunch').checked });
   if (r.ok) toast('Session started', 'ok'); refreshStatus();
 };
-$('#btnStop').onclick = async () => { await api('session/stop', {}); toast('Session saved to History', 'ok'); refreshStatus(); };
+$('#btnStop').onclick = async () => {
+  await api('session/stop', {});
+  await refreshStatus();
+  toast('Session saved. Opening the report.', 'ok', 3000);
+  document.querySelector('[data-tab=report]').click();
+};
 function paintSessionState() {
   const live = session && session.live;
   $('#devState').textContent = !session ? 'No session' : live ? 'Recording: ' + session.pkg : 'Stopped: ' + session.pkg;
@@ -347,6 +412,11 @@ function paintStats(s) {
   const set = (id, v, bad) => { const e = $(id); e.querySelector('b').textContent = v; if (bad !== undefined) e.classList.toggle('bad', bad); };
   set('#sCrash', c.crashes, c.crashes > 0); set('#sAnr', c.anrs, c.anrs > 0); set('#sKill', c.killed, c.killed > 0);
   $('#sErr b').textContent = c.errors;
+  const inc = c.crashes + c.anrs + c.killed, rb = $('#repBadge');
+  rb.style.display = session ? 'inline-block' : 'none';
+  rb.className = 'badge' + (inc ? ' bad' : '');
+  rb.textContent = inc ? inc : '\u2713';
+  rb.title = inc ? inc + ' crash / ANR / kill in this session. Open the report.' : 'No crashes or ANRs so far. Open the report.';
   $('#sLevel b').textContent = s.currentLevel ?? '-';
   $('#sStart b').textContent = s.startupMs != null ? (s.startupMs / 1000).toFixed(1) + 's' : '-';
   $('#sMem b').textContent = s.memoryKb ? Math.round(s.memoryKb / 1024) + ' MB' : '-';
@@ -454,7 +524,7 @@ function checklistHtml() {
   const s = checklistState();
   const items = [
     { ok: s.adb, title: 'adb tool', text: s.adb ? 'Ready.' : 'Missing. Use the "Download adb" button on the left.' },
-    { ok: s.dev, title: 'Connect a phone', text: s.dev ? `Connected: ${esc(s.devName)}` : 'Plug in USB, or pair over Wi-Fi.', act: s.dev ? '' : '<button data-act="qr">Pair with QR code</button>' },
+    { ok: s.dev, title: 'Connect a phone', text: s.dev ? `Connected: ${esc(s.devName)}` : 'Easiest: plug in the USB cable and tap Allow on the phone. Or pair over Wi-Fi.', act: s.dev ? '' : '<button data-act="qr">Pair with QR code</button> <button data-act="doctor">Can\'t see it?</button>' },
     { ok: s.app === 'ok', title: 'Choose the build',
       text: s.app === 'ok' ? 'Build selected.' : s.hasApk ? 'APK read. Press "Install on phone" on the left.' : 'Drop the developer\'s .apk, or pick an app already on the phone.',
       act: s.app === 'ok' ? '' : s.hasApk ? '<button data-act="install" class="primary">Install on phone</button>' : '<button data-act="apk">Choose APK</button>' },
@@ -474,7 +544,8 @@ function checklistHtml() {
 logEl.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = b.dataset.act;
-  if (a === 'qr') $('#btnQr').click();
+  if (a === 'qr') { document.querySelector('[data-ptab=qr]').click(); $('#btnQr').click(); }
+  else if (a === 'doctor') { $('#btnDoctor').click(); $('#btnDoctor').scrollIntoView({ block: 'center' }); }
   else if (a === 'apk') $('#file').click();
   else if (a === 'install') $('#btnInstall').click();
   else if (a === 'start') $('#btnStart').click();
@@ -570,6 +641,51 @@ $('#theme').onchange = () => {
   if ($('#repFrame').dataset.id) loadReport($('#repFrame').dataset.id);
 };
 const themeQ = () => { const t = $('#theme').value; return t === 'auto' ? '' : '&theme=' + t; };
+
+
+// ---------- tooltips ----------
+const TIPS = {
+  '[data-tab=live]': 'Live logs, crashes and ANRs while you play',
+  '[data-tab=report]': 'Crashes, ANRs, level times and session time. Updates live; download it to share.',
+  '[data-tab=history]': 'Earlier test sessions',
+  '#theme': 'Light, dark, or follow the Mac',
+  '#adbState': 'adb is the tool that talks to the phone',
+  '#devState': 'Whether a test session is recording',
+  '#btnRefresh': 'Look for phones again',
+  '[data-ptab=usb]': 'Connect with a USB cable', '[data-ptab=qr]': 'Connect over Wi-Fi by scanning a QR code on the phone', '[data-ptab=manual]': 'Connect over Wi-Fi by typing the numbers shown on the phone',
+  '#btnWireless': 'Plug in USB once, press this, then you can unplug the cable',
+  '#btnQr': 'Phone: Developer options > Wireless debugging > Pair device with QR code',
+  '#addr': 'IP:port from the MAIN Wireless debugging screen (not the pairing popup)',
+  '#pairAddr': 'IP:port from the "Pair device with pairing code" popup', '#pairCode': '6-digit code from the pairing popup (expires fast)',
+  '#btnPair': 'Pair this Mac with the phone (once)', '#btnConnect': 'Connect to the phone over Wi-Fi',
+  '#btnDoctor': 'Checks the connection and tells you what to fix',
+  '#drop': 'Drag the developer\'s .apk here (AAB is not supported)',
+  '#clean': 'Removes the old build first. Needed when the signature differs. Deletes the app data.',
+  '#btnInstall': 'Install the APK on the selected phone',
+  '#pkgSel': 'Pick any app on the phone, or type its bundle id (com.company.game). Newest first.',
+  '#btnPkgs': 'Reload the app list from the phone', '#sysApps': 'Also list apps like Chrome and YouTube',
+  '#optClear': 'Empties the phone log first so only this session is recorded',
+  '#optLaunch': 'Closes and opens the app so every log from the start is captured',
+  '#btnStart': 'Start recording logs, crashes, ANRs and level times',
+  '#btnStop': 'Stop and save. Opens the report.',
+  '#fbEvent': 'Name of the Firebase event, e.g. Steps', '#fbStart': 'Parameter that marks a level start, e.g. Started', '#fbEnd': 'Parameter that marks a level end, e.g. Ended',
+  '#btnFb': 'Use these names to measure level times',
+  '#btnRules': 'Save the patterns and recalculate this session', '#btnRulesReset': 'Back to the default patterns',
+  '#sCrash': 'App crashed (Java or native)', '#sAnr': 'App stopped responding (ANR)', '#sKill': 'System killed the app unexpectedly (e.g. low memory). Swiping it away does not count.',
+  '#sErr': 'Error-level log lines', '#sLevel': 'Level being played now', '#sStart': 'Time from opening the app to its first screen', '#sMem': 'App memory use (PSS)', '#sTime': 'Time since the session started',
+  '#q': 'Type to filter. Put ! before a word to hide it, e.g. !Surface',
+  '#tagSel': 'Show one log source only (Unity, FA, ...)', '#scope': 'App only = just your game. Whole phone = every log.',
+  '#onlyUnity': 'Show only lines from Unity (your C# Debug.Log)', '#auto': 'Keep scrolling to the newest line',
+  '#btnClearView': 'Clear this list (the saved session is not touched)', '#btnCopy': 'Copy the visible lines to the clipboard',
+  '#btnRepRefresh': 'Reload the report', '#repDownload button': 'Download one HTML file to send to the developer',
+  '#btnRepCopy': 'Short text summary to paste in Slack or Jira', '#repOpen button': 'Open the report in its own tab',
+};
+const LV_TIPS = { V: 'Verbose: the most detailed logs', D: 'Debug logs', I: 'Info logs (normal messages)', W: 'Warnings', E: 'Errors and fatal' };
+function applyTips() {
+  for (const [sel, t] of Object.entries(TIPS)) document.querySelectorAll(sel).forEach((el) => { el.title = t; const l = el.closest('label'); if (l && !l.title) l.title = t; });
+  document.querySelectorAll('#lv label').forEach((l) => { l.title = LV_TIPS[l.querySelector('input').value] + ' (click to show or hide)'; });
+}
+applyTips();
 
 // ---------- boot ----------
 refreshStatus().then(loadPackages);

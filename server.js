@@ -8,6 +8,7 @@ const { inspectApk } = require('./lib/apk');
 const { Session, listSessions, loadSession, deleteSession } = require('./lib/session');
 const { renderReport, textSummary } = require('./lib/report');
 const { DEFAULT_RULES } = require('./lib/analyzer');
+const { friendly } = require('./lib/hints');
 
 const PORT = +process.env.PORT || 7878;
 const PUB = path.join(__dirname, 'public');
@@ -53,6 +54,68 @@ function reportData(id) {
   return loadSession(id);
 }
 
+const os = require('os');
+const { execFile } = require('child_process');
+const LAST_FILE = path.join(DATA, 'lastdevice.json');
+let lastAddr = null;
+try { lastAddr = JSON.parse(fs.readFileSync(LAST_FILE, 'utf8')).addr; } catch (_) { /* none yet */ }
+function rememberAddr(a) { lastAddr = a; try { fs.writeFileSync(LAST_FILE, JSON.stringify({ addr: a })); } catch (_) { /* ignore */ } }
+
+function otherAdbServers() {
+  return new Promise((res) => execFile('ps', ['-axo', 'command='], { timeout: 4000 }, (e, out) => {
+    const mine = adb.path;
+    const found = new Set();
+    for (const line of String(out || '').split('\n')) {
+      const m = /^(.*?adb)\s+(?:-L\s+\S+\s+)?(?:fork-server|server)\b/.exec(line.trim());
+      // ps shows just "adb" for our own server; only a full path can be told apart
+      if (m && m[1].includes('/') && m[1] !== mine) found.add(m[1]);
+    }
+    res([...found]);
+  }));
+}
+
+// Plain-language connection check: what the Mac can see, and what to do about it.
+async function doctor() {
+  const checks = [];
+  const add = (ok, title, detail) => checks.push({ ok, title, detail });
+  if (!adb.path) { add(false, 'adb tool', 'Not found. Use "Download adb" on the left.'); return { checks, advice: ['Download adb first.'] }; }
+  const devs = await adb.devices();
+  const ready = devs.filter((d) => d.state === 'device');
+  add(true, 'adb tool', 'Working.');
+  add(ready.length > 0, 'Phone connected', ready.length ? ready.map((d) => d.model || d.serial).join(', ') : 'No phone is connected right now.');
+  const unauth = devs.filter((d) => d.state === 'unauthorized');
+  if (unauth.length) add(false, 'USB permission', 'Phone is asking "Allow USB debugging?" - tap Allow on the phone.');
+  const others = await otherAdbServers();
+  if (others.length) add(false, 'Another adb is running', `${others[0]} - it can fight with this tool and drop the phone.`);
+  const m = await adb.run(['mdns', 'services'], { timeout: 8000 });
+  const found = m.out.split('\n').filter((l) => /_adb-tls-(connect|pairing)/.test(l));
+  add(found.length > 0, 'Phone visible on Wi-Fi', found.length ? `${found.length} wireless debugging service(s) seen.` : 'The Mac cannot see any phone announcing Wireless debugging.');
+  const ips = Object.values(os.networkInterfaces()).flat().filter((i) => i.family === 'IPv4' && !i.internal).map((i) => i.address);
+  add(ips.length > 0, 'Mac network', ips.length ? ips.join(', ') : 'Mac is not on any network.');
+  let unreachable = false;
+  if (lastAddr && !ready.length) {
+    const [ip, port] = lastAddr.split(':');
+    const r = await new Promise((res) => execFile('nc', ['-z', '-w', '3', ip, port], { timeout: 6000 }, (e, so, se) => res({ ok: !e, err: String(se || (e && e.message) || '') })));
+    unreachable = !r.ok;
+    add(r.ok, 'Last phone address', r.ok ? `${lastAddr} answers (connect again with the Connect button).` : `${lastAddr} does not answer${/no route/i.test(r.err) ? ' (macOS blocked it)' : ''}.`);
+    const toInt = (a) => a.split('.').reduce((n, x) => (n * 256 + (+x)), 0);
+    const nics = Object.values(os.networkInterfaces()).flat().filter((i) => i.family === 'IPv4' && !i.internal);
+    const same = nics.some((i) => { const mask = toInt(i.netmask); return ((toInt(i.address) & mask) >>> 0) === ((toInt(ip) & mask) >>> 0); });
+    if (!same && nics.length) add(false, 'Same network?', `Phone was at ${ip}, Mac is at ${nics[0].address}. They are on different networks.`);
+    if (/no route/i.test(r.err)) unreachable = 'blocked';
+  }
+  const advice = [];
+  if (others.length) advice.push('Quit Android Studio / Unity Android tools that use another adb, or run: ' + adb.path + ' kill-server');
+  if (!ready.length) {
+    if (unreachable === 'blocked') advice.push('System Settings > Privacy & Security > Local Network: switch ON for Unity Logcat PM (or Terminal). Then reopen the tool.');
+    advice.push('Phone and Mac must be on the SAME Wi-Fi (not guest/office Wi-Fi).');
+    advice.push('On the phone: turn Wireless debugging OFF then ON. It switches itself off when Wi-Fi changes.');
+    advice.push('Then press "Pair with QR code" again (old pairing is lost when the network changes).');
+    advice.push('Fastest fix: plug in the USB cable and tap Allow on the phone.');
+  } else advice.push('All good - pick the build and start a session.');
+  return { checks, advice };
+}
+
 let qr = null;
 async function qrLoop(job) {
   const t0 = Date.now();
@@ -72,12 +135,17 @@ async function qrLoop(job) {
       const c = svc.find((x) => x[1].startsWith('_adb-tls-connect') && x[2].startsWith(job.host + ':'));
       if (c) {
         const cr = await adb.connect(c[2]);
-        if (/connected/.test(cr.out) && !/failed/.test(cr.out)) job.state = 'connected';
+        if (/connected/.test(cr.out) && !/failed/.test(cr.out)) { job.state = 'connected'; rememberAddr(c[2]); }
       }
     }
     await new Promise((res) => setTimeout(res, 1500));
   }
   if (qr === job && job.state !== 'connected') job.state = 'timeout';
+}
+
+async function withHw(list) {
+  await Promise.all(list.filter((d) => d.state === 'device').map(async (d) => { d.hw = await adb.hwSerial(d.serial); }));
+  return list;
 }
 
 const routes = {
@@ -91,7 +159,7 @@ const routes = {
 
   'GET /api/status': async () => ({
     adb: adb.path ? { path: adb.path, version: await adb.version() } : null,
-    devices: adb.path ? await adb.devices() : [],
+    devices: adb.path ? await withHw(await adb.devices()) : [],
     session: current ? { ...current.meta(), stats: current.liveStats() } : null,
     rules,
     defaultRules: DEFAULT_RULES,
@@ -104,15 +172,20 @@ const routes = {
     return { ok: !!adb.path, msg: out.split('\n').slice(-4).join('\n') };
   },
 
+  'GET /api/doctor': async () => doctor(),
   'POST /api/connect': async (req, body) => {
     const r = await adb.connect(body.addr);
-    return { ok: /connected/.test(r.out) && !/failed|cannot/.test(r.out), msg: (r.out + r.err).trim() };
+    const ok = /connected/.test(r.out) && !/failed|cannot/.test(r.out);
+    if (ok) rememberAddr(body.addr);
+    const msg = (r.out + r.err).trim();
+    return { ok, msg, hint: ok ? null : friendly('connect', msg) };
   },
   'POST /api/pair': async (req, body) => {
     const r = await adb.pair(body.addr, body.code);
-    return { ok: /Successfully/.test(r.out), msg: (r.out + r.err).trim() };
+    const ok = /Successfully/.test(r.out), msg = (r.out + r.err).trim();
+    return { ok, msg, hint: ok ? null : friendly('pair', msg) };
   },
-  'POST /api/go-wireless': async (req, body) => adb.goWireless(body.serial),
+  'POST /api/go-wireless': async (req, body) => { const r = await adb.goWireless(body.serial); if (r.ok && r.ip) rememberAddr(r.ip + ':5555'); return r; },
   'POST /api/disconnect': async (req, body) => { await adb.disconnect(body.addr); return { ok: true }; },
 
   'GET /api/packages': async (req, body, q) => ({ packages: await adb.thirdPartyPackages(q.serial, q.all === '1') }),
@@ -124,9 +197,7 @@ const routes = {
 
   'POST /api/install': async (req, body) => {
     const r = await adb.install(body.serial, body.path, { clean: body.clean, pkg: body.pkg });
-    if (!r.ok && /INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match/i.test(r.msg)) {
-      r.hint = 'Signature differs from the installed build. Tick "Clean install" (uninstalls the old build first).';
-    }
+    if (!r.ok) r.hint = friendly('install', r.msg);
     return r;
   },
 

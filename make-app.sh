@@ -6,6 +6,8 @@ NAME="Unity Logcat PM"
 OUT="dist/$NAME.app"
 rm -rf dist && mkdir -p "$OUT/Contents/MacOS" "$OUT/Contents/Resources/app"
 
+mkdir -p "$OUT/Contents/Resources"
+cp assets/AppIcon.icns "$OUT/Contents/Resources/AppIcon.icns"
 cp -R server.js package.json README.md lib public unity start.command setup-adb.sh "$OUT/Contents/Resources/app/"
 
 cat > "$OUT/Contents/Info.plist" <<PLIST
@@ -17,6 +19,7 @@ cat > "$OUT/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>dev.unitylogcatpm.app</string>
   <key>CFBundleVersion</key><string>1.0</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleExecutable</key><string>launcher</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
